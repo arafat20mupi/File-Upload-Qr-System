@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
+import { useSession } from "next-auth/react"
 import Navbar from "@/src/components/layout/navbar"
 import Sidebar from "@/src/components/layout/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
@@ -11,60 +12,58 @@ import Link from "next/link"
 
 export default function UserDashboard() {
   const router = useRouter()
-  const [userName, setUserName] = useState("")
+  const { data: session, status } = useSession()
   const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [stats, setStats] = useState({
-    totalFiles: 0,
-    totalSize: 0,
-  })
+  const [stats, setStats] = useState({ totalFiles: 0, totalSize: 0 })
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken")
-    const role = localStorage.getItem("userRole")
-    const name = localStorage.getItem("userName")
-
-    if (!token || role !== "user") {
+    if (status === "loading") return // session এখনো লোড হচ্ছে
+    if (!session) {
       router.push("/login")
       return
     }
 
-    setUserName(name || "User")
+    // ✅ শুধুমাত্র user role check করো
+    if (session.user.role !== "USER") {
+      router.push("/login")
+      return
+    }
+
     fetchStats()
-  }, [router])
+  }, [session, status, router])
 
   const fetchStats = async () => {
     try {
-      const token = localStorage.getItem("authToken")
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/stats`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (response.ok) {
-        const data = await response.json()
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/stats`)
+      if (res.ok) {
+        const data = await res.json()
         setStats(data)
       }
-    } catch (err) {
-      console.error("Failed to fetch stats:", err)
+    } catch (error) {
+      console.error("Failed to fetch stats:", error)
     } finally {
       setIsLoading(false)
     }
   }
 
+  if (status === "loading" || isLoading) {
+    return <div className="p-8 text-center">Loading...</div>
+  }
+
   return (
     <div className="min-h-screen bg-background">
-      <Navbar userName={userName} userRole="user" onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
+      <Navbar userName={session?.user?.name || "User"} userRole="user" onMenuClick={() => setSidebarOpen(!sidebarOpen)} />
       <div className="flex">
         <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} userRole="user" />
-
         <main className="flex-1 lg:ml-64 p-4 md:p-8">
           <div className="max-w-6xl mx-auto">
             <div className="mb-8">
               <h1 className="text-3xl font-bold mb-2">Dashboard</h1>
-              <p className="text-muted-foreground">Welcome back, {userName}!</p>
+              <p className="text-muted-foreground">Welcome back, {session?.user?.name}!</p>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
               <Card>
                 <CardHeader className="pb-3">

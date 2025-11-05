@@ -8,6 +8,7 @@ import Link from "next/link"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
+import { toast } from "sonner"
 
 export default function RegisterForm() {
   const router = useRouter()
@@ -59,6 +60,7 @@ export default function RegisterForm() {
       }
 
       // Redirect to login
+      toast.success("Account created successfully! Please log in.")
       router.push("/login")
     } catch (err) {
       setError("An error occurred. Please try again.")

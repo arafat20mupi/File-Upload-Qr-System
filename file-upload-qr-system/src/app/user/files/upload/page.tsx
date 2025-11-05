@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
 import { Upload, CheckCircle } from "lucide-react"
+import { useSession } from "next-auth/react"
 
 export default function UploadFile() {
   const router = useRouter()
@@ -19,20 +20,17 @@ export default function UploadFile() {
   const [isUploading, setIsUploading] = useState(false)
   const [uploadSuccess, setUploadSuccess] = useState(false)
   const [error, setError] = useState("")
+  const { data: session, status } = useSession()
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken")
-    const role = localStorage.getItem("userRole")
-    const name = localStorage.getItem("userName")
-
-    if (!token || role !== "user") {
+    if (status === "loading") return 
+    if (!session) {
       router.push("/login")
       return
     }
 
-    setUserName(name || "User")
+    setUserName(session.user.name || "User")
   }, [router])
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0]
     if (selectedFile) {
@@ -61,44 +59,50 @@ export default function UploadFile() {
     }
   }
 
-  const handleUpload = async () => {
-    if (!file) {
-      setError("Please select a file")
-      return
-    }
-
-    setIsUploading(true)
-    setError("")
-
-    try {
-      const formData = new FormData()
-      formData.append("file", file)
-
-      const token = localStorage.getItem("authToken")
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/files/upload`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        setError(data.message || "Upload failed")
-        return
-      }
-
-      setUploadSuccess(true)
-      setFile(null)
-      setTimeout(() => {
-        router.push("/user/files")
-      }, 2000)
-    } catch (err) {
-      setError("An error occurred during upload")
-      console.error(err)
-    } finally {
-      setIsUploading(false)
-    }
+const handleUpload = async () => {
+  if (!file) {
+    setError("Please select a file");
+    return;
   }
+
+  if (!session?.user?.email) {
+    setError("User email not found");
+    return;
+  }
+
+  setIsUploading(true);
+  setError("");
+
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("email", session.user.email); // <-- Add email here
+
+    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/files/upload`, {
+      method: "POST",
+      body: formData,
+      credentials: "include",
+    });
+
+    if (!response.ok) {
+      const data = await response.json();
+      setError(data.message || "Upload failed");
+      return;
+    }
+
+    setUploadSuccess(true);
+    setFile(null);
+    setTimeout(() => {
+      router.push("/user/files");
+    }, 2000);
+  } catch (err) {
+    setError("An error occurred during upload");
+    console.error(err);
+  } finally {
+    setIsUploading(false);
+  }
+};
+
 
   return (
     <div className="min-h-screen bg-background">

@@ -45,6 +45,7 @@ export const authOptions: NextAuthOptions = {
         if (!res.ok) return null
 
         const user = await res.json()
+        console.log(user);
         if (!user?.id) return null
 
         // Return full user object (including role)

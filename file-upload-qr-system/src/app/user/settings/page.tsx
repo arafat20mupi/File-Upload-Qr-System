@@ -7,6 +7,7 @@ import Sidebar from "@/src/components/layout/sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card"
 import { Button } from "@/src/components/ui/button"
 import { Input } from "@/src/components/ui/input"
+import { useSession } from "next-auth/react"
 
 export default function UserSettings() {
   const router = useRouter()
@@ -17,30 +18,31 @@ export default function UserSettings() {
     email: "",
   })
   const [isSaving, setIsSaving] = useState(false)
+    const { data: session, status } = useSession()
 
   useEffect(() => {
-    const token = localStorage.getItem("authToken")
-    const role = localStorage.getItem("userRole")
-    const name = localStorage.getItem("userName")
-
-    if (!token || role !== "user") {
+    if (status === "loading") return // session এখনো লোড হচ্ছে
+    if (!session) {
       router.push("/login")
       return
     }
 
-    setUserName(name || "User")
-    setProfile({ name: name || "", email: "" })
+    if (session.user.role !== "user") {
+      router.push("/login")
+      return
+    }
+
+    setUserName(session.user.name || "User")
+    setProfile({ name: session.user.name || "", email: session.user.email || "" })
   }, [router])
 
   const handleSave = async () => {
     setIsSaving(true)
     try {
-      const token = localStorage.getItem("authToken")
       await fetch(`${process.env.NEXT_PUBLIC_API_URL}/user/profile`, {
         method: "PUT",
         headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json"
         },
         body: JSON.stringify(profile),
       })

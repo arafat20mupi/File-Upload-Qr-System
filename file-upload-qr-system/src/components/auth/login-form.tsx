@@ -25,10 +25,9 @@ export default function LoginForm() {
         email,
         password,
       })
-
+      console.log("result ", result);
       if (result?.ok) {
         toast.success("Login successful!")
-        // 🔹 Get user session again after login
         const sessionRes = await fetch("/api/auth/session")
         const session = await sessionRes.json()
 
